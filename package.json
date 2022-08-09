@@ -1,0 +1,16 @@
+{
+  "name": "hotpoolsfinder",
+  "version": "1.0.0",
+  "description": "Hot Pools Finder",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jeipi",
+  "license": "ISC",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "node-rest-client": "^3.1.1",
+    "wait-until": "^0.0.2"
+  }
+}
