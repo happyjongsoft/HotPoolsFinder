@@ -5,7 +5,7 @@ var fs = require('fs');
 var client = new Client();
 
 var pools_list = [];
-const maxPages = 2;
+const maxPages = 6;
 const minTradingVolume = 500;
 let k = 0;
 let api_finished = false;
@@ -32,14 +32,17 @@ var fs_pools = fs.createWriteStream('pools-' + year + "-" + month + "-" + date +
     flags: 'a' // 'a' means appending (old data will be preserved)
   });
 
-for(let pageNum = 1; pageNum <= maxPages; pageNum ++){
-    // https://eigenphi.io/api/v2/arbitrage/stat/lp/hotLp/?chain=ethereum&pageNum=1&pageSize=15&period=30&sortBy=volume
-    client.get("https://eigenphi.io/api/v2/arbitrage/stat/lp/hotLp/?chain=ethereum&pageNum="+ pageNum + "&pageSize=1000&sortBy=volume", function (data, response) {
+for(let pageNum = 0; pageNum <= maxPages; pageNum ++){
+    // https://eigenphi.io/api/v2/arbitrage/stat/lp/hotLp/?chain=ethereum&pageNum=0&pageSize=15&period=30&sortBy=volume
+    client.get("https://eigenphi.io/api/v2/arbitrage/stat/lp/hotLp/?chain=ethereum&pageNum="+ pageNum + "&pageSize=1000&period=30&sortBy=volume", function (data, response) {
         // parsed response body as js object
         console.log("Got ", data.result.data.length, " Hot Pools.");    
         
         for(let i = 0 ; i < data.result.data.length; i++){
-            if(data.result.data[i].tradingVolume > minTradingVolume && data.result.data[i].tokens.length == 2 && (data.result.data[i].tokens[0].symbol == 'WETH' || data.result.data[i].tokens[1].symbol == 'WETH')){
+            if(data.result.data[i].tradingVolume > minTradingVolume && 
+                (data.result.data[i].lpName !== undefined && (data.result.data[i].lpName.toLowerCase().startsWith('uniswap') || data.result.data[i].lpName.toLowerCase().startsWith('sushiswap'))) &&
+                data.result.data[i].tokens.length == 2 && 
+                (data.result.data[i].tokens[0].symbol == 'WETH' || data.result.data[i].tokens[1].symbol == 'WETH')){
                 k++;
                 //console.log("########################### pool", k, "    tradingVolume = ", data.result.data[i].tradingVolume);
                 /**
@@ -84,7 +87,7 @@ for(let pageNum = 1; pageNum <= maxPages; pageNum ++){
 
 waitUntil()
     .interval(500)
-    .times(10)
+    .times(100000)
     .condition(function(cb) {
         process.nextTick(function() {
             cb(api_finished ? true : false);
@@ -101,6 +104,7 @@ waitUntil()
                     if((pools_list[i].tokens[0].address == pools_list[j].tokens[0].address && pools_list[i].tokens[1].address == pools_list[j].tokens[1].address) ||
                     pools_list[i].tokens[0].address == pools_list[j].tokens[1].address && pools_list[i].tokens[1].address == pools_list[j].tokens[0].address){
                         e = true;
+                        break;
                     }
                 }
             }
@@ -108,7 +112,8 @@ waitUntil()
                 paired_pools_list.push(pools_list[i]);
                 console.log(paired_pools_list.length, "[" + pools_list[i].lpName + "]", pools_list[i].tokens[0].symbol + "/" + pools_list[i].tokens[1].symbol,"    \ttradingVolume = ", pools_list[i].tradingVolume);
 
-                fs_pools.write(pools_list[i].lpName + ',' + 
+                let poolname = pools_list[i].lpName.replace(':' + pools_list[i].tokens[0].symbol + '/' + pools_list[i].tokens[1].symbol, "");
+                fs_pools.write(poolname + ',' + 
                     pools_list[i].lpAddress + ',' +
                     pools_list[i].tokens[0].symbol + '/' + pools_list[i].tokens[1].symbol + "," + 
                     pools_list[i].tokens[0].symbol + ',' +
